@@ -45,15 +45,27 @@ def list_files():
 
         # Call the Drive v3 API
         results = service.files().list(
-            pageSize=100, fields="nextPageToken, files(id, name)").execute()
+            pageSize=100, fields="nextPageToken, items(id, name, mimetype)").execute()
         items = results.get('files', [])
 
-        if not items:
+        files = []
+        folders = []
+        for item in items:
+            if item['mimetype'] == 'application/vnd.google-app.folder':
+                folders.append(item)
+            else:
+                files.append(item)
+
+        if not files:
             print('No files found.')
             return
         print('Files:')
-        for item in items:
+        for file in files:
             print(u'{0} ({1})'.format(item['name'], item['id']))
+        print('\nFolders:')
+        for folder in folders:
+            print(f"{folder['name']} ({folder['id']})")
+        return files, folders
     except HttpError as error:
         # TODO(developer) - Handle errors from drive API.
         print('An error occurred: ', error)
