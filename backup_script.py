@@ -67,7 +67,7 @@ def list_files():
         files = []
         folders = []
         for item in all_items:
-            if item['mimetype'] == 'application/vnd.google-app.folder':
+            if item['mimetype'] == 'application/vnd.google-apps.folder':
                 folders.append(item)
             else:
                 files.append(item)
@@ -150,23 +150,24 @@ def upload_directory(directory_path, filetype):
             key_file_location=key_file_location)
 
         # get list of existing files
-        results = service.files().list(
-            pageSize=100, fields="nextPageToken, files(id, name)").execute()
-        items = results.get('files', [])
+        files, folders = list_files()
 
-        filenames = set([item["name"] for item in items])
+        filenames = set([files["name"] for file in files])
+        foldernames = set([folders["name"] for folder in folders])
 
-        files_to_upload = os.listdir(directory_path)
+        items_to_upload = os.listdir(directory_path)
 
         # make sure object is file, is correct filetype and is not already uploaded
-        for file in files_to_upload:
-            file_path = directory_path + "/" + file
-            if os.path.isfile(file_path) and file[-4:] == filetype:
-                if file in filenames:
-                    print("Skipping ", file, ", item has already been downloaded")
+        for item in items_to_upload:
+            item_path = directory_path + "/" + item
+
+            # if file, check for duplicate then upload
+            if os.path.isfile(item_path) and item[-4:] == filetype:
+                if item in filenames:
+                    print(f"Skipping {item}, file has already been uploaded")
                 else:
                     file_metadata = {
-                    'name': file,
+                    'name': item,
                     'mimeType': '*/*'
                     }
                     media = MediaFileUpload(file_path,
@@ -175,11 +176,44 @@ def upload_directory(directory_path, filetype):
                     file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
                     print ('File ID: ' + file.get('id'))
                     num_new += 1
+
+            # if directory, check for duplicates then create and upload entire directory
+            if os.path.isdir(item_path):
+                if item in foldernames:
+                    print(f"Skipping {item}, folder has already been uploaded")
+                else:
+                    folder_items = os.listdir(directory_path + "/" + item)
+                    print(f"Creating folder {item} and uploading {len(folder_items)} files")
+
+                    # create folder
+                    body = {
+                        'name': item,
+                        'mimeType': "application/vnd.google-apps.folder"
+                    }
+                    new_folder = service.files.create(body=body).execute()
+                    folder_id = new_folder['id']
+
+                    # upload files to folder
+                    for subitem in folder_items:
+                        subitem_path = directory_path + "/" + item + "/" + subitem
+                        if os.path.isfile(subitem_path) and subitem[-4:] == filetype:
+                            file_metadata = {
+                            'name': subitem,
+                            'mimeType': '*/*',
+                            'parents': [folder_id]
+                            }
+                            media = MediaFileUpload(subitem_path,
+                                                    mimetype='*/*',
+                                                    resumable=True)
+                            file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+                            print ('File ID: ' + file.get('id'))
+                            num_new += 1
+
     except HttpError as error:
         # TODO(developer) - Handle errors from drive API.
         print('An error occurred: ', error)
-    print(num_new, " new files uploaded")
-    print("Total number of files: ", len(items))
+    print(f"{num_new} new files/folders uploaded")
+    print(f"Total number of files/folders: {len(files) + len(folders) + num_new}")
 
 def download_directory(directory_path):
     # Define the auth scopes to request.
