@@ -50,12 +50,12 @@ def list_files():
             if first:
                 print("Retrieving batch of items")
                 results = service.files().list(
-                    pageSize=100, fields="nextPageToken, files(id, name)").execute()
+                    pageSize=100, fields="nextPageToken, files(id, name, mimeType)").execute()
                 first = False
             else:
                 print("Retrieving batch of items")
                 results = service.files().list(
-                    pageSize=100, pageToken = page_token, fields="nextPageToken, files(id, name)").execute()
+                    pageSize=100, pageToken = page_token, fields="nextPageToken, files(id, name, mimeType)").execute()
             items = results.get('files', [])
             page_token = results.get('nextPageToken', None)
 
@@ -67,7 +67,7 @@ def list_files():
         files = []
         folders = []
         for item in all_items:
-            if item['mimetype'] == 'application/vnd.google-apps.folder':
+            if item['mimeType'] == 'application/vnd.google-apps.folder':
                 folders.append(item)
             else:
                 files.append(item)
@@ -152,8 +152,8 @@ def upload_directory(directory_path, filetype):
         # get list of existing files
         files, folders = list_files()
 
-        filenames = set([files["name"] for file in files])
-        foldernames = set([folders["name"] for folder in folders])
+        filenames = set([file["name"] for file in files])
+        foldernames = set([folder["name"] for folder in folders])
 
         items_to_upload = os.listdir(directory_path)
 
@@ -190,7 +190,7 @@ def upload_directory(directory_path, filetype):
                         'name': item,
                         'mimeType': "application/vnd.google-apps.folder"
                     }
-                    new_folder = service.files.create(body=body).execute()
+                    new_folder = service.files().create(body=body).execute()
                     folder_id = new_folder['id']
 
                     # upload files to folder
