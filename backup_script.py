@@ -43,19 +43,36 @@ def list_files():
             scopes=[scope],
             key_file_location=key_file_location)
 
-        # Call the Drive v3 API
-        results = service.files().list(
-            pageSize=100, fields="nextPageToken, items(id, name, mimetype)").execute()
-        items = results.get('files', [])
+        # Get all items from root of drive
+        all_items = []
+        first = True
+        while True:
+            if first:
+                print("Retrieving batch of items")
+                results = service.files().list(
+                    pageSize=100, fields="nextPageToken, files(id, name)").execute()
+                first = False
+            else:
+                print("Retrieving batch of items")
+                results = service.files().list(
+                    pageSize=100, pageToken = page_token, fields="nextPageToken, files(id, name)").execute()
+            items = results.get('files', [])
+            page_token = results.get('nextPageToken', None)
+
+            all_items += items
+
+            if page_token == None:
+                break
 
         files = []
         folders = []
-        for item in items:
+        for item in all_items:
             if item['mimetype'] == 'application/vnd.google-app.folder':
                 folders.append(item)
             else:
                 files.append(item)
 
+        # output info
         if not files:
             print('No files found.')
             return
@@ -65,6 +82,9 @@ def list_files():
         print('\nFolders:')
         for folder in folders:
             print(f"{folder['name']} ({folder['id']})")
+        print(f"Total of {len(files)} files found")
+        print(f"Total of {len(folders)} folders found")
+
         return files, folders
     except HttpError as error:
         # TODO(developer) - Handle errors from drive API.
