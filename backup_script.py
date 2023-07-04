@@ -3,6 +3,7 @@ import shutil
 import os
 import argparse
 import json
+import requests as req
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload,MediaIoBaseDownload
@@ -146,6 +147,13 @@ class DriveSync():
         except HttpError as error:
             # TODO(developer) - Handle errors from drive API.
             print('An error occurred: ', error)
+
+    def delete_file_by_name(self, filename):
+        files, folders = self.get_files()
+
+        for item in files:
+            if item["name"] == filename:
+                self.delete_file(item["id"])
 
     def delete_all(self):
         try:
@@ -314,12 +322,33 @@ class DriveSync():
         print(num_new_downloaded, " new files downloaded")
         print(f"Total number of files: {len(filenames)}")
 
+    def upload_ip(self):
+        url = "https://checkip.amazonaws.com"
+        request = req.get(url)
+        ip = request.text
+
+        # create file with ip
+        print(f"Public IP: {ip}")
+        with open('ip.txt', 'w') as f:
+            f.write(ip)
+
+        # delete old ip text files
+        self.delete_file_by_name('ip.txt')
+        
+        # upload file
+        self.upload_file('ip.txt')
+        os.remove('ip.txt')
+        
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--backup", help = "Launch in backup mode. Will upload all non-duplicate files in the directory specified within settings.json", action = "store_true")
     parser.add_argument("-c", "--clear", help = "Clear all local copies of files that have already been uploaded", action = "store_true")
     parser.add_argument("-s", "--sync", help = "Launch in sync mode. Will download all non-downloaded files to the directory specified within settings.json", action = "store_true")
     parser.add_argument("-p", "--purge", help = "Delete all files stored remotely.", action = "store_true")
+    parser.add_argument("-i", "--ip", help = "Update the remotely stored IP address file", action = "store_true")
+
     args = parser.parse_args()
 
     if args.backup:
@@ -339,6 +368,10 @@ def main():
     if args.purge:
         drive_sync = DriveSync()
         drive_sync.delete_all()
+
+    if args.ip:
+        drive_sync = DriveSync()
+        drive_sync.upload_ip()
 
     """Shows basic usage of the Drive v3 API.
     Prints the names and ids of the first 10 files the user has access to.
