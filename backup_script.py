@@ -361,13 +361,13 @@ class DriveSync():
         self.upload_file('ip.txt')
         os.remove('ip.txt')
 
-    def download_ip(self):
+    def download_file_by_name(self, filename):
         directory_path = self.settings["sync_dir"]
         files, folders = self.get_files()
         for item in files:
             file = item["name"]
             save_path = directory_path + "/" + file
-            if file == "ip.txt":
+            if file == filename:
                 request = self.service.files().get_media(fileId=item["id"])
                 fh = io.BytesIO()
                 downloader = MediaIoBaseDownload(fh, request)
@@ -421,7 +421,7 @@ def main():
 
     if args.address:
         drive_sync = DriveSync()
-        drive_sync.download_ip()
+        drive_sync.download_file_by_name("ip.txt")
 
     """Shows basic usage of the Drive v3 API.
     Prints the names and ids of the first 10 files the user has access to.
