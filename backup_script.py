@@ -11,6 +11,9 @@ from googleapiclient.errors import HttpError
 from google.oauth2 import service_account
 
 def make_archive(source, destination):
+    """Wrapper for shutil.make_archive to make it less counter intuitive
+    https://stackoverflow.com/questions/45245079/python-how-to-use-shutil-make-archive
+    """
     base = os.path.basename(destination)
     name = base.split('.')[0]
     format = base.split('.')[1]
@@ -21,8 +24,14 @@ def make_archive(source, destination):
     shutil.move('%s.%s'%(name,format), destination)
 
 class DriveSync():
+    """Creates and stores an instance of google drive api service to 
+    access and upload files.
+
+    Paths for directories to be backed up, location of client secret, etc.
+    are specified in settings.json. If no settings.json file exists, one
+    will be created and program will exit.
+    """
     def __init__(self):
-        # TODO:: load file location from json eventually
         # Define the auth scopes to request.
         if not os.path.isfile("./settings.json"):
             self.create_empty_settings()
@@ -42,6 +51,7 @@ class DriveSync():
             print('An error occurred: ', error)
 
     def create_empty_settings(self):
+        """Create an empty settings.json file"""
         print("Could not find settings.json: creating empty settings file")
         print("Please specify paths in settings.json and restart script")
         settings = {"backup_dir" : "<PATH TO DIRECTORY TO BACKUP>",
@@ -362,6 +372,11 @@ class DriveSync():
         os.remove('ip.txt')
 
     def download_file_by_name(self, filename):
+        """Download a remotely stored file by name
+        
+        Args:
+            filename: name of file to download (all copies will be downloaded)
+        """
         directory_path = self.settings["sync_dir"]
         files, folders = self.get_files()
         for item in files:
@@ -381,10 +396,6 @@ class DriveSync():
                 with open(save_path, 'wb') as f:
                     shutil.copyfileobj(fh, f, length=131072)
                     print ('File ID: ' + item.get('id'))
-
-
-        
-
 
 def main():
     parser = argparse.ArgumentParser()
@@ -422,14 +433,6 @@ def main():
     if args.address:
         drive_sync = DriveSync()
         drive_sync.download_file_by_name("ip.txt")
-
-    """Shows basic usage of the Drive v3 API.
-    Prints the names and ids of the first 10 files the user has access to.
-    """
-    # list_files()
-    # upload_directory("C:/Users/antho/OneDrive/Documents/2023-2024/BBC/Bike/folder_to_backup",".txt")
-    # download_directory("C:/Users/antho/OneDrive/Documents/2023-2024/BBC/Bike/folder_to_sync")
-
     
 
 if __name__ == '__main__':
