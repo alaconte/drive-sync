@@ -77,6 +77,12 @@ class DriveSync():
         return service
 
     def get_files(self):
+        """Get all files and folders stored remotely
+
+        Returns:
+            Items as json representations of the file/folder
+        https://developers.google.com/drive/api/reference/rest/v3/files#File
+        """
         try:
             # Get all items from root of drive
             all_items = []
@@ -122,10 +128,14 @@ class DriveSync():
 
             return files, folders
         except HttpError as error:
-            # TODO(developer) - Handle errors from drive API.
             print('An error occurred: ', error)
 
     def upload_file(self, filename):
+        """Upload a single file to google drive
+        
+        Args:
+            filename: relative or absolute path to file
+        """
         try:
             file_metadata = {
             'name': filename,
@@ -137,18 +147,23 @@ class DriveSync():
             file = self.service.files().create(body=file_metadata, media_body=media, fields='id').execute()
             print ('File ID: ' + file.get('id'))
         except HttpError as error:
-            # TODO(developer) - Handle errors from drive API.
             print('An error occurred: ', error)
 
     def delete_file(self, file_id):
+        """Delete a remotely stored file by its google drive file id."""
         try:
             self.service.files().delete(fileId=file_id).execute()
             print ('Deleted: ', file_id)
         except HttpError as error:
-            # TODO(developer) - Handle errors from drive API.
             print('An error occurred: ', error)
 
     def delete_file_by_name(self, filename):
+        """Delete a remotely stored file by its name.
+        Note: if multiple files match filename, all of them will be deleted
+
+        Args:
+            filename: the name of file(s) to search for and delete
+        """
         files, folders = self.get_files()
 
         for item in files:
@@ -156,6 +171,7 @@ class DriveSync():
                 self.delete_file(item["id"])
 
     def delete_all(self):
+        """Clear out remote storage"""
         try:
             # get all files and folders
             files, folders = self.get_files()
@@ -182,6 +198,9 @@ class DriveSync():
             print('An error occurred: ', error)
 
     def delete_local_copies(self):
+        """Delete all files in the backup_dir specified in settings.json that also exist remotely.
+        Intended to clear out local storage on machine collecting data.
+        """
         try:
             # get all files and folders
             files, folders = self.get_files()
@@ -205,6 +224,7 @@ class DriveSync():
             print('An error occurred: ', error)
 
     def upload_directory(self):
+        """Upload all new files found in the backup_dir specified in settings.json."""
         num_new = 0
         directory_path = self.settings["backup_dir"]
         filetypes = self.settings["file_types"]
@@ -283,6 +303,7 @@ class DriveSync():
         print(f"Total number of files/folders: {len(files) + len(folders) + num_new}")
 
     def download_directory(self):
+        """Download all remotely stored files into sync_dir specified in settings.json"""
         directory_path = self.settings["sync_dir"]
         num_new_downloaded = 0
 
@@ -323,6 +344,7 @@ class DriveSync():
         print(f"Total number of files: {len(filenames)}")
 
     def upload_ip(self):
+        """Create a file named ip.txt and upload it to google drive"""
         url = "https://checkip.amazonaws.com"
         request = req.get(url)
         ip = request.text
