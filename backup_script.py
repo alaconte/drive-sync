@@ -338,6 +338,29 @@ class DriveSync():
         # upload file
         self.upload_file('ip.txt')
         os.remove('ip.txt')
+
+    def download_ip(self):
+        directory_path = self.settings["sync_dir"]
+        files, folders = self.get_files()
+        for item in files:
+            file = item["name"]
+            save_path = directory_path + "/" + file
+            if file == "ip.txt":
+                request = self.service.files().get_media(fileId=item["id"])
+                fh = io.BytesIO()
+                downloader = MediaIoBaseDownload(fh, request)
+                done = False
+                while done is False:
+                    status, done = downloader.next_chunk()
+                    print("Download %d%%" % int(status.progress() * 100))
+
+                # The file has been downloaded into RAM, now save it in a file
+                fh.seek(0)
+                with open(save_path, 'wb') as f:
+                    shutil.copyfileobj(fh, f, length=131072)
+                    print ('File ID: ' + item.get('id'))
+
+
         
 
 
@@ -348,6 +371,7 @@ def main():
     parser.add_argument("-s", "--sync", help = "Launch in sync mode. Will download all non-downloaded files to the directory specified within settings.json", action = "store_true")
     parser.add_argument("-p", "--purge", help = "Delete all files stored remotely.", action = "store_true")
     parser.add_argument("-i", "--ip", help = "Update the remotely stored IP address file", action = "store_true")
+    parser.add_argument("-a", "--address", help = "Download the remotely stored IP address file", action="store_true")
 
     args = parser.parse_args()
 
@@ -372,6 +396,10 @@ def main():
     if args.ip:
         drive_sync = DriveSync()
         drive_sync.upload_ip()
+
+    if args.address:
+        drive_sync = DriveSync()
+        drive_sync.download_ip()
 
     """Shows basic usage of the Drive v3 API.
     Prints the names and ids of the first 10 files the user has access to.
